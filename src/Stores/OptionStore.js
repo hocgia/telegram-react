@@ -5,9 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { EventEmitter } from 'events';
-import TdLibController from '../Controllers/TdLibController';
+import EventEmitter from './EventEmitter';
 import { KEY_SUGGESTED_LANGUAGE_PACK_ID } from '../Constants';
+import TdLibController from '../Controllers/TdLibController';
 
 class OptionStore extends EventEmitter {
     constructor() {
@@ -16,7 +16,6 @@ class OptionStore extends EventEmitter {
         this.reset();
 
         this.addTdLibListener();
-        this.setMaxListeners(Infinity);
     }
 
     reset = () => {
@@ -57,13 +56,13 @@ class OptionStore extends EventEmitter {
     onClientUpdate = update => {};
 
     addTdLibListener = () => {
-        TdLibController.addListener('update', this.onUpdate);
-        TdLibController.addListener('clientUpdate', this.onClientUpdate);
+        TdLibController.on('update', this.onUpdate);
+        TdLibController.on('clientUpdate', this.onClientUpdate);
     };
 
     removeTdLibListener = () => {
-        TdLibController.removeListener('update', this.onUpdate);
-        TdLibController.removeListener('clientUpdate', this.onClientUpdate);
+        TdLibController.off('update', this.onUpdate);
+        TdLibController.off('clientUpdate', this.onClientUpdate);
     };
 
     get(name) {

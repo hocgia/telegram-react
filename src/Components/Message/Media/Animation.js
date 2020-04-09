@@ -73,16 +73,16 @@ class Animation extends React.Component {
 
     startStopPlayer = () => {
         const player = this.videoRef.current;
-        if (player) {
-            if (
-                this.windowFocused &&
-                ((this.inView && !this.openMediaViewer && !this.openProfileMediaViewer && !this.openIV) ||
-                    (this.ivInView && !this.openIVMedia))
-            ) {
-                player.play();
-            } else {
-                player.pause();
-            }
+        if (!player) return;
+
+        if (
+            this.windowFocused &&
+            ((this.inView && !this.openMediaViewer && !this.openProfileMediaViewer && !this.openIV) ||
+                (this.ivInView && !this.openIVMedia))
+        ) {
+            player.play();
+        } else {
+            player.pause();
         }
     };
 
@@ -159,7 +159,7 @@ class Animation extends React.Component {
     };
 
     render() {
-        const { displaySize, openMedia, t, style } = this.props;
+        const { displaySize, openMedia, t, title, caption, type, style } = this.props;
         const { minithumbnail, thumbnail, animation, mime_type, width, height } = this.props.animation;
 
         const fitPhotoSize = getFitSize({ width, height } || thumbnail, displaySize, false);
@@ -177,9 +177,19 @@ class Animation extends React.Component {
 
         const isBlurred = thumbnailSrc ? isBlurredThumbnail(thumbnail) : Boolean(miniSrc);
         const isGif = isGifMimeType(mime_type);
+        const source = src ? <source src={src} type={mime_type}/> : null;
 
         return (
-            <div className={classNames('animation', { pointer: openMedia })} style={animationStyle} onClick={openMedia}>
+            <div
+                className={classNames('animation', {
+                    'animation-big': type === 'message',
+                    'animation-title': title,
+                    'media-title': title,
+                    'animation-caption': caption,
+                    pointer: openMedia
+                })}
+                style={animationStyle}
+                onClick={openMedia}>
                 {src ? (
                     isGif ? (
                         <img className='animation-preview' src={src} alt='' />
@@ -187,7 +197,6 @@ class Animation extends React.Component {
                         <video
                             ref={this.videoRef}
                             className='media-viewer-content-animation'
-                            src={src}
                             poster={thumbnailSrc || miniSrc}
                             muted
                             autoPlay
@@ -195,7 +204,9 @@ class Animation extends React.Component {
                             playsInline
                             width={animationStyle.width}
                             height={animationStyle.height}
-                        />
+                        >
+                            {source}
+                        </video>
                     )
                 ) : (
                     <>

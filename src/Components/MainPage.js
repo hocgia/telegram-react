@@ -7,16 +7,13 @@
 
 import React from 'react';
 import classNames from 'classnames';
-import { compose } from 'recompose';
-import withStyles from '@material-ui/core/styles/withStyles';
+import { compose } from '../Utils/HOC';
 import withLanguage from '../Language';
-import withTheme from '../Theme';
 import withSnackbarNotifications from '../Notifications';
 import ForwardDialog from './Popup/ForwardDialog';
 import ChatInfo from './ColumnRight/ChatInfo';
 import Dialogs from './ColumnLeft/Dialogs';
 import DialogDetails from './ColumnMiddle/DialogDetails';
-import Footer from './Footer';
 import InstantViewer from './InstantView/InstantViewer';
 import MediaViewer from './Viewer/MediaViewer';
 import ProfileMediaViewer from './Viewer/ProfileMediaViewer';
@@ -27,13 +24,6 @@ import InstantViewStore from '../Stores/InstantViewStore';
 import UserStore from '../Stores/UserStore';
 import TdLibController from '../Controllers/TdLibController';
 import '../TelegramApp.css';
-
-const styles = theme => ({
-    page: {
-        background: theme.palette.type === 'dark' ? theme.palette.background.default : '#FFFFFF',
-        color: theme.palette.text.primary
-    }
-});
 
 class MainPage extends React.Component {
     constructor(props) {
@@ -68,17 +58,14 @@ class MainPage extends React.Component {
     }
 
     componentWillUnmount() {
-        UserStore.removeListener('clientUpdateOpenUser', this.onClientUpdateOpenUser);
-        ChatStore.removeListener('clientUpdateOpenChat', this.onClientUpdateOpenChat);
+        UserStore.off('clientUpdateOpenUser', this.onClientUpdateOpenUser);
+        ChatStore.off('clientUpdateOpenChat', this.onClientUpdateOpenChat);
 
-        ApplicationStore.removeListener('clientUpdateChatDetailsVisibility', this.onClientUpdateChatDetailsVisibility);
-        ApplicationStore.removeListener('clientUpdateMediaViewerContent', this.onClientUpdateMediaViewerContent);
-        ApplicationStore.removeListener(
-            'clientUpdateProfileMediaViewerContent',
-            this.onClientUpdateProfileMediaViewerContent
-        );
-        ApplicationStore.removeListener('clientUpdateForward', this.onClientUpdateForward);
-        InstantViewStore.removeListener('clientUpdateInstantViewContent', this.onClientUpdateInstantViewContent);
+        ApplicationStore.off('clientUpdateChatDetailsVisibility', this.onClientUpdateChatDetailsVisibility);
+        ApplicationStore.off('clientUpdateMediaViewerContent', this.onClientUpdateMediaViewerContent);
+        ApplicationStore.off('clientUpdateProfileMediaViewerContent', this.onClientUpdateProfileMediaViewerContent);
+        ApplicationStore.off('clientUpdateForward', this.onClientUpdateForward);
+        InstantViewStore.off('clientUpdateInstantViewContent', this.onClientUpdateInstantViewContent);
     }
 
     onClientUpdateInstantViewContent = update => {
@@ -164,7 +151,6 @@ class MainPage extends React.Component {
     };
 
     render() {
-        const { classes } = this.props;
         const {
             instantViewContent,
             isChatDetailsVisible,
@@ -175,12 +161,14 @@ class MainPage extends React.Component {
 
         return (
             <>
-                <div className={classNames(classes.page, 'page', { 'page-third-column': isChatDetailsVisible })}>
+                <div
+                    className={classNames('page', {
+                        'page-third-column': isChatDetailsVisible
+                    })}>
                     <Dialogs />
                     <DialogDetails ref={this.dialogDetailsRef} />
                     {isChatDetailsVisible && <ChatInfo />}
                 </div>
-                <Footer />
                 {instantViewContent && <InstantViewer {...instantViewContent} />}
                 {mediaViewerContent && <MediaViewer {...mediaViewerContent} />}
                 {profileMediaViewerContent && <ProfileMediaViewer {...profileMediaViewerContent} />}
@@ -194,8 +182,6 @@ MainPage.propTypes = {};
 
 const enhance = compose(
     withLanguage,
-    withTheme,
-    withStyles(styles),
     withSnackbarNotifications
 );
 

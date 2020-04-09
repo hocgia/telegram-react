@@ -6,32 +6,25 @@
  */
 
 import React from 'react';
-import PropTypes from 'prop-types';
-import copy from 'copy-to-clipboard';
-import { compose } from 'recompose';
+import { copy } from '../../Utils/Text';
+import { compose } from '../../Utils/HOC';
 import { withTranslation } from 'react-i18next';
 import { withSnackbar } from 'notistack';
-import withStyles from '@material-ui/core/styles/withStyles';
-import CloseIcon from '@material-ui/icons/Close';
+import CloseIcon from '../../Assets/Icons/Close';
 import LinkIcon from '@material-ui/icons/Link';
-import MoreIcon from '@material-ui/icons/MoreVert';
+import MoreIcon from '../../Assets/Icons/More';
 import IconButton from '@material-ui/core/IconButton';
 import ShareIcon from '@material-ui/icons/Share';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
+import { forward } from '../../Actions/Client';
 import { NOTIFICATION_AUTO_HIDE_DURATION_MS } from '../../Constants';
 import OptionStore from '../../Stores/OptionStore';
 import StickerStore from '../../Stores/StickerStore';
 import ApplicationStore from '../../Stores/ApplicationStore';
 import TdLibController from '../../Controllers/TdLibController';
-
-const styles = theme => ({
-    close: {
-        padding: theme.spacing.unit / 2
-    }
-});
 
 class ShareStickerSetButton extends React.Component {
     state = {
@@ -95,7 +88,7 @@ class ShareStickerSetButton extends React.Component {
                         key='close'
                         aria-label='Close'
                         color='inherit'
-                        className={classes.close}
+                        className='notification-close-button'
                         onClick={() => ApplicationStore.removeScheduledAction(key)}>
                         <CloseIcon />
                     </IconButton>
@@ -115,20 +108,28 @@ class ShareStickerSetButton extends React.Component {
             stickerSet: null
         });
 
-        TdLibController.clientUpdate({
-            '@type': 'clientUpdateForward',
-            info: { link }
-        });
+        const inputMessageContent = {
+            '@type': 'inputMessageText',
+            text: {
+                '@type': 'formattedText',
+                text: link,
+                entities: null
+            },
+            disable_web_page_preview: false,
+            clear_draft: false
+        };
+
+        forward(inputMessageContent);
     };
 
     render() {
-        const { classes, t, className } = this.props;
+        const { t, className } = this.props;
         const { anchorEl } = this.state;
 
         return (
             <>
                 <IconButton
-                    className={classes.iconButton + ' ' + className}
+                    className={className}
                     aria-label='Share'
                     open={Boolean(anchorEl)}
                     onClick={this.handleMenuClick}>
@@ -171,7 +172,6 @@ class ShareStickerSetButton extends React.Component {
 ShareStickerSetButton.propTypes = {};
 
 const enhance = compose(
-    withStyles(styles, { withTheme: true }),
     withTranslation(),
     withSnackbar
 );

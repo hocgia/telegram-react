@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { EventEmitter } from 'events';
+import EventEmitter from './EventEmitter';
 import { KEY_AUTH_STATE } from '../Constants';
 import TdLibController from '../Controllers/TdLibController';
 
@@ -17,7 +17,6 @@ class AuthorizationStore extends EventEmitter {
         this.load();
 
         this.addTdLibListener();
-        this.setMaxListeners(Infinity);
     }
 
     load() {
@@ -59,16 +58,37 @@ class AuthorizationStore extends EventEmitter {
         }
     };
 
-    onClientUpdate = update => {};
+    onClientUpdate = update => {
+        switch (update['@type']) {
+            case 'clientUpdateMonkeyIdle': {
+                this.emit(update['@type'], update);
+                break;
+            }
+            case 'clientUpdateMonkeyTracking': {
+                this.emit(update['@type'], update);
+                break;
+            }
+            case 'clientUpdateMonkeyClose': {
+                this.emit(update['@type'], update);
+                break;
+            }
+            case 'clientUpdateMonkeyPeek': {
+                this.emit(update['@type'], update);
+                break;
+            }
+            default:
+                break;
+        }
+    };
 
     addTdLibListener = () => {
-        TdLibController.addListener('update', this.onUpdate);
-        TdLibController.addListener('clientUpdate', this.onClientUpdate);
+        TdLibController.on('update', this.onUpdate);
+        TdLibController.on('clientUpdate', this.onClientUpdate);
     };
 
     removeTdLibListener = () => {
-        TdLibController.removeListener('update', this.onUpdate);
-        TdLibController.removeListener('clientUpdate', this.onClientUpdate);
+        TdLibController.off('update', this.onUpdate);
+        TdLibController.off('clientUpdate', this.onClientUpdate);
     };
 }
 

@@ -7,8 +7,7 @@
 
 import React from 'react';
 import classNames from 'classnames';
-import withStyles from '@material-ui/core/styles/withStyles';
-import PinIcon from 'mdi-material-ui/Pin';
+import PinIcon from '../../Assets/Icons/Pin';
 import {
     isChatMuted,
     showChatUnreadCount,
@@ -19,29 +18,11 @@ import ChatStore from '../../Stores/ChatStore';
 import NotificationStore from '../../Stores/NotificationStore';
 import './DialogBadge.css';
 
-const styles = theme => ({
-    dialogBadge: {
-        background: theme.palette.primary.main
-    },
-    dialogBadgeMuted: {
-        background: theme.palette.type === 'dark' ? theme.palette.text.disabled : '#d8d8d8'
-    },
-    unreadIcon: {},
-    pinIcon: {
-        color: theme.palette.text.secondary,
-        fontSize: 18
-    }
-});
-
 class DialogBadge extends React.Component {
     shouldComponentUpdate(nextProps, nextState) {
-        const { chatId, theme } = this.props;
+        const { chatId } = this.props;
 
         if (nextProps.chatId !== chatId) {
-            return true;
-        }
-
-        if (nextProps.theme !== theme) {
             return true;
         }
 
@@ -64,18 +45,18 @@ class DialogBadge extends React.Component {
     }
 
     componentWillUnmount() {
-        ChatStore.removeListener('clientUpdateFastUpdatingComplete', this.onFastUpdatingComplete);
-        ChatStore.removeListener('clientUpdateClearHistory', this.onClientUpdateClearHistory);
-        ChatStore.removeListener('updateChatDraftMessage', this.onUpdate);
-        ChatStore.removeListener('updateChatIsMarkedAsUnread', this.onUpdate);
-        ChatStore.removeListener('updateChatIsPinned', this.onUpdate);
-        ChatStore.removeListener('updateChatNotificationSettings', this.onUpdate);
-        ChatStore.removeListener('updateChatReadInbox', this.onUpdate);
-        ChatStore.removeListener('updateChatLastMessage', this.onUpdate);
-        ChatStore.removeListener('updateChatReadOutbox', this.onUpdate);
-        ChatStore.removeListener('updateChatUnreadMentionCount', this.onUpdate);
-        ChatStore.removeListener('updateMessageMentionRead', this.onUpdate);
-        NotificationStore.removeListener('updateScopeNotificationSettings', this.onUpdateScopeNotificationSettings);
+        ChatStore.off('clientUpdateFastUpdatingComplete', this.onFastUpdatingComplete);
+        ChatStore.off('clientUpdateClearHistory', this.onClientUpdateClearHistory);
+        ChatStore.off('updateChatDraftMessage', this.onUpdate);
+        ChatStore.off('updateChatIsMarkedAsUnread', this.onUpdate);
+        ChatStore.off('updateChatIsPinned', this.onUpdate);
+        ChatStore.off('updateChatNotificationSettings', this.onUpdate);
+        ChatStore.off('updateChatReadInbox', this.onUpdate);
+        ChatStore.off('updateChatLastMessage', this.onUpdate);
+        ChatStore.off('updateChatReadOutbox', this.onUpdate);
+        ChatStore.off('updateChatUnreadMentionCount', this.onUpdate);
+        ChatStore.off('updateMessageMentionRead', this.onUpdate);
+        NotificationStore.off('updateScopeNotificationSettings', this.onUpdateScopeNotificationSettings);
     }
 
     onClientUpdateClearHistory = update => {
@@ -124,42 +105,39 @@ class DialogBadge extends React.Component {
     render() {
         if (this.clearHistory) return null;
 
-        const { chatId, classes } = this.props;
+        const { chatId } = this.props;
 
         const chat = ChatStore.get(chatId);
         if (!chat) return null;
 
         const { is_pinned, unread_count } = chat;
 
-        const showUnreadMessageIcon = showChatUnreadMessageIcon(chatId);
+        const showUnreadMessageIcon = false; //showChatUnreadMessageIcon(chatId);
         const showUnreadMentionCount = showChatUnreadMentionCount(chatId);
         const showUnreadCount = showChatUnreadCount(chatId);
         const isMuted = isChatMuted(chatId);
 
         return (
             <>
-                {showUnreadMessageIcon && <i className={classNames('dialog-badge-unread', classes.unreadIcon)} />}
+                {showUnreadMessageIcon && <i className='dialog-badge-unread' />}
                 {showUnreadMentionCount && (
-                    <div className={classNames('dialog-badge', classes.dialogBadge)}>
+                    <div className='dialog-badge'>
                         <div className='dialog-badge-mention'>@</div>
                     </div>
                 )}
                 {showUnreadCount && (
-                    <div
-                        className={classNames(
-                            { [classes.dialogBadgeMuted]: isMuted },
-                            'dialog-badge',
-                            classes.dialogBadge
-                        )}>
+                    <div className={classNames({ 'dialog-badge-muted': isMuted }, 'dialog-badge')}>
                         <span className='dialog-badge-text'>{unread_count > 0 ? unread_count : ''}</span>
                     </div>
                 )}
                 {is_pinned && !showUnreadMessageIcon && !showUnreadCount && !showUnreadMentionCount && (
-                    <PinIcon className={classNames(classes.pinIcon, 'dialog-badge-pinned')} />
+                    <div className='dialog-badge-pinned'>
+                        <PinIcon className='dialog-badge-pinned-icon' />
+                    </div>
                 )}
             </>
         );
     }
 }
 
-export default withStyles(styles, { withTheme: true })(DialogBadge);
+export default DialogBadge;

@@ -8,7 +8,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
-import PlayArrowIcon from '@material-ui/icons/PlayArrow';
+import PlayArrowIcon from '../../../Assets/Icons/PlayArrow';
 import { getFitSize, getDurationString } from '../../../Utils/Common';
 import { getFileSize, getSrc } from '../../../Utils/File';
 import { isBlurredThumbnail } from '../../../Utils/Media';
@@ -22,7 +22,7 @@ class Video extends React.Component {
     }
 
     componentWillUnmount() {
-        FileStore.removeListener('clientUpdateVideoThumbnailBlob', this.onClientUpdateVideoThumbnailBlob);
+        FileStore.off('clientUpdateVideoThumbnailBlob', this.onClientUpdateVideoThumbnailBlob);
     }
 
     onClientUpdateVideoThumbnailBlob = update => {
@@ -37,10 +37,10 @@ class Video extends React.Component {
     };
 
     render() {
-        const { displaySize, openMedia, style } = this.props;
+        const { displaySize, openMedia, title, caption, type, style } = this.props;
         const { minithumbnail, thumbnail, video, width, height, duration } = this.props.video;
 
-        const fitPhotoSize = getFitSize(thumbnail || { width: width, height: height }, displaySize);
+        const fitPhotoSize = getFitSize({ width, height } || thumbnail, displaySize);
         if (!fitPhotoSize) return null;
 
         const videoStyle = {
@@ -54,7 +54,15 @@ class Video extends React.Component {
         const isBlurred = thumbnailSrc ? isBlurredThumbnail(thumbnail) : Boolean(miniSrc);
 
         return (
-            <div className={classNames('video', { pointer: openMedia })} style={videoStyle} onClick={openMedia}>
+            <div
+                className={classNames('video', {
+                    'video-big': type === 'message',
+                    'video-title': title,
+                    'video-caption': caption,
+                    pointer: openMedia
+                })}
+                style={videoStyle}
+                onClick={openMedia}>
                 <img
                     className={classNames('video-preview', {
                         'media-blurred': isBlurred,

@@ -8,22 +8,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
-import { compose } from 'recompose';
 import { withTranslation } from 'react-i18next';
-import withStyles from '@material-ui/core/styles/withStyles';
 import ReplyTile from '../Tile/ReplyTile';
 import { getContent, getTitle, isDeletedMessage, getReplyPhotoSize, getReplyMinithumbnail } from '../../Utils/Message';
-import { accentStyles } from '../Theme';
 import { openChat } from '../../Actions/Client';
 import MessageStore from '../../Stores/MessageStore';
 import './Reply.css';
-
-const styles = theme => ({
-    replyContentSubtitle: {
-        color: theme.palette.text.secondary
-    },
-    ...accentStyles(theme)
-});
 
 class Reply extends React.Component {
     componentDidMount() {
@@ -31,7 +21,7 @@ class Reply extends React.Component {
     }
 
     componentWillUnmount() {
-        MessageStore.removeListener('getMessageResult', this.onGetMessageResult);
+        MessageStore.off('getMessageResult', this.onGetMessageResult);
     }
 
     onGetMessageResult = result => {
@@ -62,12 +52,12 @@ class Reply extends React.Component {
     };
 
     render() {
-        const { classes, t, chatId, messageId } = this.props;
+        const { t, chatId, messageId } = this.props;
         let { title } = this.props;
 
         const message = MessageStore.get(chatId, messageId);
 
-        title = title || getTitle(message);
+        title = title || getTitle(message, t);
         let content = !message ? t('Loading') : getContent(message, t);
         const photoSize = getReplyPhotoSize(chatId, messageId);
         const minithumbnail = getReplyMinithumbnail(chatId, messageId);
@@ -80,7 +70,7 @@ class Reply extends React.Component {
         return (
             <div className='reply' onMouseDown={this.handleOpen} onClick={this.handleClick}>
                 <div className='reply-wrapper'>
-                    <div className={classNames('reply-border', classes.accentBackgroundLight)} />
+                    <div className='border reply-border' />
                     {photoSize && (
                         <ReplyTile
                             chatId={chatId}
@@ -90,12 +80,8 @@ class Reply extends React.Component {
                         />
                     )}
                     <div className='reply-content'>
-                        {title && (
-                            <div className={classNames('reply-content-title', classes.accentColorMain)}>{title}</div>
-                        )}
-                        <div className={classNames('reply-content-subtitle', classes.replyContentSubtitle)}>
-                            {content}
-                        </div>
+                        {title && <div className='reply-content-title'>{title}</div>}
+                        <div className={classNames('reply-content-subtitle')}>{content}</div>
                     </div>
                 </div>
             </div>
@@ -110,9 +96,4 @@ Reply.propTypes = {
     onClick: PropTypes.func
 };
 
-const enhance = compose(
-    withStyles(styles, { withTheme: true }),
-    withTranslation()
-);
-
-export default enhance(Reply);
+export default withTranslation()(Reply);

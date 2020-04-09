@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { EventEmitter } from 'events';
+import EventEmitter from '../Stores/EventEmitter';
 import packageJson from '../../package.json';
 import { stringToBoolean, getBrowser, getOSName } from '../Utils/Common';
 import {
@@ -17,6 +17,7 @@ import {
     WASM_FILE_NAME
 } from '../Constants';
 import TdClient from 'tdweb/dist/tdweb';
+// import TdClient from '@arseny30/tdweb/dist/tdweb';
 
 function databaseExists(dbname, callback) {
     var req = indexedDB.open(dbname);
@@ -46,9 +47,6 @@ class TdLibController extends EventEmitter {
         };
 
         this.disableLog = true;
-        this.localStorage = true;
-
-        this.setMaxListeners(Infinity);
     }
 
     init = location => {
@@ -157,9 +155,6 @@ class TdLibController extends EventEmitter {
         if (params.has('clientlog')) {
             this.disableLog = !stringToBoolean(params.get('clientlog'));
         }
-        if (params.has('localstorage')) {
-            this.localStorage = stringToBoolean(params.get('localstorage'));
-        }
     };
 
     send = request => {
@@ -191,7 +186,7 @@ class TdLibController extends EventEmitter {
         const apiId = process.env.REACT_APP_TELEGRAM_API_ID;
         const apiHash = process.env.REACT_APP_TELEGRAM_API_HASH;
 
-        console.log('[td] sendTdParameters', apiHash, apiId);
+        // console.log('[td] sendTdParameters', apiHash, apiId);
         if (!apiId || !apiHash) {
             if (
                 window.confirm(

@@ -6,32 +6,51 @@
  */
 
 import React, { Component } from 'react';
-import PropTypes from 'prop-types';
 import classNames from 'classnames';
-import withStyles from '@material-ui/core/styles/withStyles';
+import Archive from './Archive';
 import Search from './Search/Search';
 import DialogsHeader from './DialogsHeader';
 import DialogsList from './DialogsList';
+import SidebarPage from './SidebarPage';
+import Settings from './Settings/Settings';
+import Contacts from './Contacts';
 import UpdatePanel from './UpdatePanel';
-import { borderStyle } from '../Theme';
 import { openChat } from '../../Actions/Client';
-import ApplicationStore from '../../Stores/ApplicationStore';
+import { getArchiveTitle } from '../../Utils/Archive';
+import { loadChatsContent } from '../../Utils/File';
+import AppStore from '../../Stores/ApplicationStore';
+import CacheStore from '../../Stores/CacheStore';
+import ChatStore from '../../Stores/ChatStore';
+import FileStore from '../../Stores/FileStore';
+import TdLibController from '../../Controllers/TdLibController';
 import './Dialogs.css';
-
-const styles = theme => ({
-    ...borderStyle(theme)
-});
+import CSSTransition from 'react-transition-group/CSSTransition';
 
 class Dialogs extends Component {
     constructor(props) {
         super(props);
 
-        this.dialogsListRef = React.createRef();
+        this.dialogListRef = React.createRef();
+        this.archiveListRef = React.createRef();
         this.dialogsHeaderRef = React.createRef();
 
+        const { isChatDetailsVisible } = AppStore;
+
         this.state = {
-            isChatDetailsVisible: ApplicationStore.isChatDetailsVisible,
+            cache: null,
+
+            showArchive: false,
+            archiveTitle: null,
+
+            mainItems: [],
+            archiveItems: [],
+
+            isChatDetailsVisible,
             openSearch: false,
+            openArchive: false,
+            openContacts: false,
+            openSettings: false,
+
             searchChatId: 0,
             searchText: null,
             query: null
@@ -39,19 +58,66 @@ class Dialogs extends Component {
     }
 
     shouldComponentUpdate(nextProps, nextState) {
-        if (nextState.isChatDetailsVisible !== this.state.isChatDetailsVisible) {
+        const {
+            cache,
+            showArchive,
+            archiveTitle,
+            mainItems,
+            archiveItems,
+            isChatDetailsVisible,
+            openSearch,
+            openArchive,
+            openSettings,
+            openContacts,
+            searchChatId,
+            searchText
+        } = this.state;
+
+        if (nextState.cache !== cache) {
             return true;
         }
 
-        if (nextState.openSearch !== this.state.openSearch) {
+        if (nextState.showArchive !== showArchive) {
             return true;
         }
 
-        if (nextState.searchChatId !== this.state.searchChatId) {
+        if (nextState.archiveTitle !== archiveTitle) {
             return true;
         }
 
-        if (nextState.searchText !== this.state.searchText) {
+        if (nextState.archiveItems !== archiveItems) {
+            return true;
+        }
+
+        if (nextState.mainItems !== mainItems) {
+            return true;
+        }
+
+        if (nextState.isChatDetailsVisible !== isChatDetailsVisible) {
+            return true;
+        }
+
+        if (nextState.openSearch !== openSearch) {
+            return true;
+        }
+
+        if (nextState.openArchive !== openArchive) {
+            return true;
+        }
+
+        if (nextState.openSettings !== openSettings) {
+            return true;
+        }
+
+        if (nextState.openContacts !== openContacts) {
+            return true;
+        }
+
+        if (nextState.searchChatId !== searchChatId) {
+            return true;
+        }
+
+        if (nextState.searchText !== searchText) {
             return true;
         }
 
@@ -59,25 +125,153 @@ class Dialogs extends Component {
     }
 
     componentDidMount() {
-        ApplicationStore.on('clientUpdateChatDetailsVisibility', this.onClientUpdateChatDetailsVisibility);
-        ApplicationStore.on('clientUpdateSearchChat', this.onClientUpdateSearchChat);
-        ApplicationStore.on('clientUpdateThemeChange', this.onClientUpdateThemeChange);
+        this.loadCache();
+
+        AppStore.on('clientUpdateChatDetailsVisibility', this.onClientUpdateChatDetailsVisibility);
+        AppStore.on('clientUpdateSearchChat', this.onClientUpdateSearchChat);
+        AppStore.on('clientUpdateThemeChange', this.onClientUpdateThemeChange);
+
+        ChatStore.on('updateChatChatList', this.onUpdateChatChatList);
+
+        ChatStore.on('updateChatDraftMessage', this.onUpdateChatOrder);
+        ChatStore.on('updateChatIsPinned', this.onUpdateChatOrder);
+        ChatStore.on('updateChatIsSponsored', this.onUpdateChatOrder);
+        ChatStore.on('updateChatLastMessage', this.onUpdateChatOrder);
+        ChatStore.on('updateChatOrder', this.onUpdateChatOrder);
+
+        ChatStore.on('clientUpdateSettings', this.onClientUpdateSettings);
+        ChatStore.on('clientUpdateArchive', this.onClientUpdateArchive);
+        ChatStore.on('clientUpdateContacts', this.onClientUpdateContacts);
     }
 
     componentWillUnmount() {
-        ApplicationStore.removeListener('clientUpdateChatDetailsVisibility', this.onClientUpdateChatDetailsVisibility);
-        ApplicationStore.removeListener('clientUpdateSearchChat', this.onClientUpdateSearchChat);
-        ApplicationStore.removeListener('clientUpdateThemeChange', this.onClientUpdateThemeChange);
+        AppStore.off('clientUpdateChatDetailsVisibility', this.onClientUpdateChatDetailsVisibility);
+        AppStore.off('clientUpdateSearchChat', this.onClientUpdateSearchChat);
+        AppStore.off('clientUpdateThemeChange', this.onClientUpdateThemeChange);
+
+        ChatStore.off('updateChatChatList', this.onUpdateChatChatList);
+
+        ChatStore.off('updateChatDraftMessage', this.onUpdateChatOrder);
+        ChatStore.off('updateChatIsPinned', this.onUpdateChatOrder);
+        ChatStore.off('updateChatIsSponsored', this.onUpdateChatOrder);
+        ChatStore.off('updateChatLastMessage', this.onUpdateChatOrder);
+        ChatStore.off('updateChatOrder', this.onUpdateChatOrder);
+
+        ChatStore.off('clientUpdateSettings', this.onClientUpdateSettings);
+        ChatStore.off('clientUpdateArchive', this.onClientUpdateArchive);
+        ChatStore.off('clientUpdateContacts', this.onClientUpdateContacts);
     }
+
+    async loadCache() {
+        const cache = (await CacheStore.loadCache()) || {};
+
+        const { chats, archiveChats } = cache;
+
+        this.setState({
+            cache,
+
+            showArchive: archiveChats && archiveChats.length > 0,
+            archiveTitle: getArchiveTitle()
+        });
+
+        this.loadChatContents((chats || []).map(x => x.id));
+
+        TdLibController.clientUpdate({
+            '@type': 'clientUpdateCacheLoaded'
+        });
+    }
+
+    saveCache() {
+        const { current: archiveCurrent } = this.archiveListRef;
+        const archiveChatIds =
+            archiveCurrent && archiveCurrent.state.chats ? archiveCurrent.state.chats.slice(0, 25) : [];
+
+        const { current: mainCurrent } = this.dialogListRef;
+        const mainChatIds = mainCurrent && mainCurrent.state.chats ? mainCurrent.state.chats.slice(0, 25) : [];
+
+        CacheStore.saveChats(mainChatIds, archiveChatIds);
+    }
+
+    onUpdateChatOrder = update => {
+        const { chat_id } = update;
+
+        const { current: mainCurrent } = this.dialogListRef;
+        if (mainCurrent && mainCurrent.loading) {
+            return;
+        }
+
+        const { current: archiveCurrent } = this.archiveListRef;
+        if (archiveCurrent && archiveCurrent.loading) {
+            return;
+        }
+
+        const archive = ChatStore.chatList.get('chatListArchive');
+        if (archive && archive.has(chat_id)) {
+            this.setState({ archiveTitle: getArchiveTitle() });
+        }
+    };
+
+    onUpdateChatChatList = update => {
+        const { showArchive: prevShowArchive } = this.state;
+
+        const { current: mainCurrent } = this.dialogListRef;
+        if (mainCurrent && mainCurrent.loading) {
+            return;
+        }
+
+        const { current: archiveCurrent } = this.archiveListRef;
+        if (archiveCurrent && archiveCurrent.loading) {
+            return;
+        }
+
+        const archiveList = ChatStore.chatList.get('chatListArchive');
+        const showArchive = archiveList && archiveList.size > 0;
+
+        this.setState({ showArchive, archiveTitle: getArchiveTitle() }, () => {
+            if (!prevShowArchive && showArchive) {
+                const { current } = this.dialogListRef;
+                if (current.listRef) {
+                    const { current: listCurrent } = current.listRef;
+                    if (listCurrent && listCurrent.scrollTop > 0) {
+                        current.scrollTop += 68;
+                    }
+                }
+            }
+        });
+
+        if (prevShowArchive && !showArchive) {
+            TdLibController.clientUpdate({
+                '@type': 'clientUpdateCloseArchive'
+            });
+        }
+    };
+
+    onClientUpdateContacts = async update => {
+        const { open } = update;
+
+        this.setState({ openContacts: open });
+    };
+
+    onClientUpdateSettings = update => {
+        const { open, chatId } = update;
+
+        this.setState({ openSettings: open, meChatId: chatId });
+    };
+
+    onClientUpdateArchive = update => {
+        const { open } = update;
+
+        this.setState({ openArchive: open });
+    };
 
     onClientUpdateThemeChange = update => {
         this.forceUpdate();
     };
 
     onClientUpdateChatDetailsVisibility = update => {
-        this.setState({
-            isChatDetailsVisible: ApplicationStore.isChatDetailsVisible
-        });
+        const { isChatDetailsVisible } = AppStore;
+
+        this.setState({ isChatDetailsVisible });
     };
 
     onClientUpdateSearchChat = update => {
@@ -93,7 +287,10 @@ class Dialogs extends Component {
             {
                 openSearch: true,
                 searchChatId: chatId,
-                searchText: null
+                searchText: null,
+                openSettings: false,
+                openActiveSessions: false,
+                openContacts: false
             },
             () => {
                 if (header) {
@@ -104,7 +301,14 @@ class Dialogs extends Component {
     };
 
     handleHeaderClick = () => {
-        this.dialogsListRef.current.scrollToTop();
+        const { openArchive } = this.state;
+        if (openArchive) {
+            TdLibController.clientUpdate({
+                '@type': 'clientUpdateCloseArchive'
+            });
+        } else {
+            this.dialogListRef.current.scrollToTop();
+        }
     };
 
     handleSearch = visible => {
@@ -128,7 +332,7 @@ class Dialogs extends Component {
         });
     };
 
-    handleClose = () => {
+    handleCloseSearch = () => {
         this.setState({
             openSearch: false,
             searchChatId: 0,
@@ -143,37 +347,108 @@ class Dialogs extends Component {
         });
     };
 
+    handleSaveCache = () => {
+        this.saveCache();
+    };
+
+    loadChatContents(chatIds) {
+        const store = FileStore.getStore();
+        loadChatsContent(store, chatIds);
+    }
+
+    handleCloseArchive = () => {
+        this.setState({ openArchive: false });
+    };
+
+    handleCloseContacts = () => {
+        this.setState({ openContacts: false });
+    };
+
+    handleCloseSettings = () => {
+        this.setState({ openSettings: false });
+    };
+
     render() {
-        const { classes } = this.props;
-        const { isChatDetailsVisible, openSearch, searchChatId, searchText } = this.state;
+        const {
+            cache,
+            showArchive,
+            archiveTitle,
+            mainItems,
+            archiveItems,
+            isChatDetailsVisible,
+            meChatId,
+            openSettings,
+            openContacts,
+            openArchive,
+            openSearch,
+            searchChatId,
+            searchText
+        } = this.state;
+
+        const mainCacheItems = cache ? cache.chats || [] : null;
+        const archiveCacheItems = cache ? cache.archiveChats || [] : null;
 
         return (
-            <div
-                className={classNames(classes.borderColor, 'dialogs', {
-                    'dialogs-third-column': isChatDetailsVisible
-                })}>
-                <DialogsHeader
-                    ref={this.dialogsHeaderRef}
-                    openSearch={openSearch}
-                    onClick={this.handleHeaderClick}
-                    onSearch={this.handleSearch}
-                    onSearchTextChange={this.handleSearchTextChange}
-                />
-                <div className='dialogs-content'>
-                    <DialogsList ref={this.dialogsListRef} />
-                    {openSearch && (
-                        <Search
-                            chatId={searchChatId}
-                            text={searchText}
-                            onSelectMessage={this.handleSelectMessage}
-                            onClose={this.handleClose}
+            <>
+                <div
+                    className={classNames('dialogs', {
+                        'dialogs-third-column': isChatDetailsVisible
+                    })}>
+                    <div className='sidebar-page'>
+                        <DialogsHeader
+                            ref={this.dialogsHeaderRef}
+                            openSearch={openSearch}
+                            onClick={this.handleHeaderClick}
+                            onSearch={this.handleSearch}
+                            onSearchTextChange={this.handleSearchTextChange}
                         />
-                    )}
+                        <div className='dialogs-content'>
+                            <DialogsList
+                                type='chatListMain'
+                                ref={this.dialogListRef}
+                                cacheItems={mainCacheItems}
+                                items={mainItems}
+                                showArchive={showArchive}
+                                archiveTitle={archiveTitle}
+                                open={true}
+                                onSaveCache={this.handleSaveCache}
+                            />
+                            <CSSTransition
+                                classNames='search'
+                                timeout={200}
+                                in={openSearch}
+                                mountOnEnter={true}
+                                unmountOnExit={true}>
+                                <Search
+                                    chatId={searchChatId}
+                                    text={searchText}
+                                    onSelectMessage={this.handleSelectMessage}
+                                    onClose={this.handleCloseSearch}
+                                />
+                            </CSSTransition>
+                        </div>
+                        <UpdatePanel />
+                    </div>
+
+                    <SidebarPage open={openArchive} onClose={this.handleCloseArchive}>
+                        <Archive
+                            innerListRef={this.archiveListRef}
+                            items={archiveItems}
+                            cacheItems={archiveCacheItems}
+                        />
+                    </SidebarPage>
+
+                    <SidebarPage open={openContacts} onClose={this.handleCloseContacts}>
+                        <Contacts />
+                    </SidebarPage>
+
+                    <SidebarPage open={openSettings} onClose={this.handleCloseSettings}>
+                        <Settings chatId={meChatId} />
+                    </SidebarPage>
                 </div>
-                <UpdatePanel />
-            </div>
+            </>
         );
     }
 }
 
-export default withStyles(styles)(Dialogs);
+export default Dialogs;
